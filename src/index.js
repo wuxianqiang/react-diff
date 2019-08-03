@@ -30,8 +30,20 @@ class Counter extends React.Component {
     super(props);
     this.state = {number: 0}
   }
+  //WARNING! To be deprecated in React v17. Use componentDidMount instead.
+  componentWillMount() {
+    console.log('将要渲染')
+  }
   componentDidMount() {
-    console.log('DidMount')
+    // console.log('DidMount')
+    setInterval(() => {
+      this.setState({
+        number: this.state.number + 1
+      })
+    }, 1000)
+  }
+  shouldComponentUpdate(nextProps, nextState) {
+    return true
   }
   increment () {
     this.setState({
@@ -39,9 +51,10 @@ class Counter extends React.Component {
     })
   }
   render() {
-    let p = createElement('p', {style: {color: 'red'}}, this.state.number)
-    let button = createElement('div', {onClick: this.increment}, '+')
-    return createElement('div',{id: 'counter'}, p, button)
+    // let p = createElement('p', {style: {color: 'red'}}, this.state.number)
+    // let button = createElement('div', {onClick: this.increment}, '+')
+    // return createElement('div',{id: 'counter'}, p, button)
+    return this.state.number
   }
 }
 

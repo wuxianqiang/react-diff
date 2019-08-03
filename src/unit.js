@@ -18,6 +18,12 @@ class TextUnit extends Unit {
     this._reactid = reactid;
     return `<span data-reactid="${reactid}">${this._currentElement}</span>`
   }
+  update (nextElement) {
+    if (this._currentElement !== nextElement) {
+      this._currentElement = nextElement;
+      $(`[data-reactid="${this._reactid}"]`).html(this._currentElement);
+    }
+  }
 }
 // reactid是一层一层的格式0.1.2
 
@@ -69,18 +75,51 @@ class NativeUnit extends Unit {
 }
 
 class CompositeUnit extends Unit {
+  // 负责组件的更新操作
+  update (nextElement, partialState) {
+    // 获取到新元素
+    this._currentElement = nextElement || this._currentElement
+    // 获取到新的状态
+    // 合并状态
+    // 不管是不是要修改组件，一定要修改状态
+    let nextState = this._currentElement.state = Object.assign(this._componentInstance.state, partialState)
+    let nextProps = this._currentElement.props;
+    // 判断是否要更新
+    if (this._componentInstance.shouldComponentUpdate && !this._componentInstance.shouldComponentUpdate(nextProps, nextState)) {
+      return
+    }
+    // 确定要更新
+    // 上次渲染的单元
+    let preRenderedUnitInstance = this._renderedUnitInstance;
+    // 删除渲染的元素
+    let preRenderedElement = preRenderedUnitInstance._currentElement;
+    // 这次渲染的元素
+    let nextRenderElement = this._componentInstance.render();
+    // 比较类型啥的
+    if (shouldDeepCompare(preRenderedElement, nextRenderElement)) {
+      // react的DOM-diff策略
+      // 把更新的操作交给上次更新的unit
+      preRenderedUnitInstance.update(nextRenderElement)
+      this._componentInstance.componentDidUpdate&&this._componentInstance.componentDidUpdate()
+    } else {
+      this._renderedUnitInstance = createUnit(nextRenderElement);
+      let nextMarkUp = this._renderedUnitInstance.getMarkUp(this._reactid);
+      $(`[data-reactid="${this._reactid}"]`).replaceWith(nextMarkUp)
+    }
+  }
   getMarkUp (reactid) {
     this._reactid = reactid;
     // {type: Counter, props: {name: '计数器'}}
     let {type: Component, props} = this._currentElement;
+    // _componentInstance当前组件的实例
     let componentInstance = this._componentInstance = new Component(props);
-    this._componentInstance.currentUnit = this; // 保存处理的单元
+    this._componentInstance._currentUnit = this; // 保存处理的单元
     // 如果组件有渲染函数就让它执行
     componentInstance.componentWillMount && componentInstance.componentWillMount()
     // 获取到了react元素
     let renderElement = componentInstance.render();
-    // react也要进行编译和返回
-    let renderUnit = createUnit(renderElement);
+    // _renderedUnitInstance保存react也要进行编译和返回
+    let renderUnit = this._renderedUnitInstance = createUnit(renderElement);
     let renderedMarkUp = renderUnit.getMarkUp(this._reactid)
     // 在这个时候绑定一个事件
     $(document).on('mounted', () => {
@@ -103,6 +142,23 @@ function createUnit(element) {
   if (element instanceof Element && typeof element.type === 'function') {
     return new CompositeUnit(element)
   }
+}
+
+// 两个react元素的比较
+function shouldDeepCompare (oldElement, newElement) {
+  if (oldElement != null && newElement != null) {
+    let oldType = typeof oldElement;
+    let newType = typeof newElement;
+    // 普通字符串
+    if ((oldType === 'string' || oldElement === 'number') && (newType === 'string' || newType === 'number')) {
+      return true;
+    }
+    // react元素
+    if (oldElement instanceof Element && newElement instanceof Element) {
+      return oldElement.type === newElement.type
+    }
+  }
+  return false;
 }
 
 export {
