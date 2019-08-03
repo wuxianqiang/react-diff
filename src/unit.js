@@ -71,11 +71,22 @@ class NativeUnit extends Unit {
 class CompositeUnit extends Unit {
   getMarkUp (reactid) {
     this._reactid = reactid;
+    // {type: Counter, props: {name: '计数器'}}
     let {type: Component, props} = this._currentElement;
-    let componentInstance = new Component(props);
+    let componentInstance = this._componentInstance = new Component(props);
+    this._componentInstance.currentUnit = this; // 保存处理的单元
+    // 如果组件有渲染函数就让它执行
+    componentInstance.componentWillMount && componentInstance.componentWillMount()
+    // 获取到了react元素
     let renderElement = componentInstance.render();
+    // react也要进行编译和返回
     let renderUnit = createUnit(renderElement);
-    return renderUnit.getMarkUp(this._reactid)
+    let renderedMarkUp = renderUnit.getMarkUp(this._reactid)
+    // 在这个时候绑定一个事件
+    $(document).on('mounted', () => {
+      componentInstance.componentDidMount &&componentInstance.componentDidMount()
+    })
+    return renderedMarkUp
   }
 }
 

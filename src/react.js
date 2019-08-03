@@ -15,6 +15,7 @@ function render(element, container) {
   let unit = createUnit(element)
   let markUp = unit.getMarkUp(React.rootIndex); // 用来返回HTML标记
   $(container).html(markUp)
+  $(document).trigger('mounted')
 }
 
 export default React
