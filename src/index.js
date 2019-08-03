@@ -16,6 +16,7 @@ let element = createElement(
   'button', 
   {
     id: 'sayHello',
+    onClick: () => {console.log('hello')},
     style: {color: 'red', backgroundColor: 'green'},
   },
   'say',
