@@ -1,10 +1,12 @@
 import $ from 'jquery'
 import {createUnit} from './unit';
+import {Component} from './component'
 // import {Element, createElement} from './element'
 
 let React = {
   render,
-  rootIndex: 0
+  rootIndex: 0,
+  Component
 }
 
 // 通过自定义属性定位元素

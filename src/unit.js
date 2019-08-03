@@ -1,4 +1,4 @@
-import {Element, createElement} from './element'
+import {Element} from './element'
 import $ from 'jquery'
 
 // 抽象类:只用于继承，不能实例化
@@ -19,7 +19,9 @@ class TextUnit extends Unit {
     return `<span data-reactid="${reactid}">${this._currentElement}</span>`
   }
 }
+// reactid是一层一层的格式0.1.2
 
+// 分析虚拟DOM的的单元
 class NativeUnit extends Unit {
   getMarkUp(reactid) {
     this._reactid = reactid;
@@ -66,6 +68,17 @@ class NativeUnit extends Unit {
   }
 }
 
+class CompositeUnit extends Unit {
+  getMarkUp (reactid) {
+    this._reactid = reactid;
+    let {type: Component, props} = this._currentElement;
+    let componentInstance = new Component(props);
+    let renderElement = componentInstance.render();
+    let renderUnit = createUnit(renderElement);
+    return renderUnit.getMarkUp(this._reactid)
+  }
+}
+
 function createUnit(element) {
   // 字符串或者数字
   if (typeof element === 'string' || typeof element === 'number') {
@@ -74,6 +87,10 @@ function createUnit(element) {
   // 虚拟DOM
   if (element instanceof Element && typeof element.type === 'string') {
     return new NativeUnit(element)
+  }
+  // 是个类组件
+  if (element instanceof Element && typeof element.type === 'function') {
+    return new CompositeUnit(element)
   }
 }
 
@@ -85,3 +102,8 @@ export {
 // 负责把元素转成成可以在页面中显示的字符串
 
 // 每个单元都要返回HTML字符串的方法
+// 使用到了jQuery里面的事件委托
+// 事件都定义到document中
+// 绑定事件的元素也是通过自定义属性方式获取的。
+
+// 开始渲染自定义组件
