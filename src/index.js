@@ -28,7 +28,10 @@ import {createElement} from './element'
 class Counter extends React.Component {
   constructor (props) {
     super(props);
-    this.state = {number: 0}
+    // this.state = {number: 0}
+    this.state = {
+      old: true
+    }
   }
   //WARNING! To be deprecated in React v17. Use componentDidMount instead.
   componentWillMount() {
@@ -36,11 +39,15 @@ class Counter extends React.Component {
   }
   componentDidMount() {
     // console.log('DidMount')
-    // setInterval(() => {
-    //   this.setState({
-    //     number: this.state.number + 1
-    //   })
-    // }, 1000)
+    setTimeout(() => {
+      // this.setState({
+      //   number: this.state.number + 1
+      // })
+      console.log('执行')
+      this.setState({
+        old: false
+      })
+    }, 1000)
   }
   shouldComponentUpdate(nextProps, nextState) {
     return true
@@ -51,11 +58,27 @@ class Counter extends React.Component {
     })
   }
   render() {
-    console.log('ren', this.state.number)
-    let p = createElement('p', {style: {color: 'red'}}, this.state.number)
-    let button = createElement('button', {onClick: this.increment}, '+')
-    return createElement('div',{id: 'counter'}, p, button)
+    // console.log('ren', this.state.number)
+    // let p = createElement('p', {style: {color: 'red'}}, this.state.number)
+    // let button = createElement('button', {onClick: this.increment}, '+')
+    // return createElement('div',{id: 'counter'}, p, button)
     // return this.state.number
+    if (this.state.old) {
+      return createElement('ul', {id: 'aa'}, 
+      createElement('li', {key: 'A'}, 'A'),
+      createElement('li', {key: 'B'}, 'B'),
+      createElement('li', {key: 'C'}, 'C'),
+      createElement('li', {key: 'D'}, 'D'),
+    )
+    } else {
+      return createElement('ul', {id: 'bb'}, 
+      createElement('li', {key: 'A'}, 'A'),
+      createElement('li', {key: 'C'}, 'C'),
+      createElement('li', {key: 'B'}, 'B'),
+      createElement('li', {key: 'E'}, 'E'),
+      createElement('li', {key: 'F'}, 'F'),
+    )
+    }
   }
 }
 
