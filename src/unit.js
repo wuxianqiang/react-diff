@@ -1,6 +1,9 @@
 import {Element} from './element'
 import $ from 'jquery'
 
+let diffQueue; // 差异对应
+let undateDepth = 0; // 更新级别
+
 // 抽象类:只用于继承，不能实例化
 class Unit {
   constructor (element) {
@@ -29,12 +32,94 @@ class TextUnit extends Unit {
 
 // 分析虚拟DOM的的单元
 class NativeUnit extends Unit {
+  update(nextElement) {
+    let oldProps = this._currentElement.props;
+    let newProps = nextElement.props;
+    this.updateDOMProperties(oldProps, newProps)
+    this.updateDOMChildren(nextElement.props.children)
+  }
+  // 新的React元素和老的React进行对比
+  updateDOMChildren (newChildrenElement) {
+    this.diff(diffQueue, newChildrenElement)
+  }
+  // 开始对比
+  diff(diffQueue, newChildrenElement) {
+    let oldChildrenMap = this.getOldChildrenMap(this._renderedChildrenUnit);
+    let newChildren = this.getNewChildren(oldChildrenMap, newChildrenElement);
+  }
+  getNewChildren (oldChildrenMap, newChildrenElement) {
+    let newChildren = [];
+    // 一定要给key值
+    newChildrenElement.forEach((newElement, index) => {
+      let newKey = (
+        newElement&&
+        newElement.props&&
+        newElement.props.key
+      ) || index.toString();
+      let oldUnit = oldChildrenMap[newKey];
+      let oldElement = oldUnit && oldUnit._currentElement;
+      if (shouldDeepCompare(oldElement, newElement)) {
+        oldUnit.update(newElement);
+        newChildren.push(oldUnit)
+      } else {
+        let nextUnit = createUnit(newElement);
+        newChildren.push(nextUnit)
+      }
+    })
+    return newChildren
+  }
+
+  getOldChildrenMap (childrenUnit=[]) {
+    let map = {}
+    for (let i = 0; i < childrenUnit.length; i++) {
+      // 在进行遍历的时候有个key属性值
+      let key = (
+        childrenUnit[i]&&
+        childrenUnit[i].props&&
+        childrenUnit[i].props.key
+      ) || i.toString();
+      map[key] =  childrenUnit[i];
+      console.log(childrenUnit[i])
+    }
+    return map;
+  }
+
+  updateDOMProperties (oldProps, newProps) {
+    let propName;
+    for (propName in oldProps) {
+      if (!newProps.hasOwnProperty(propName)) {
+        $(`[data-reactid="${this._reactid}"]`).removeAttr(propName)
+      }
+      // 事件要取消绑定
+      if(/^on[A-Z]/.test(propName)) {
+        $(document).undelegate(`.${this._reactid}`)
+      }
+    }
+    for (propName in newProps) {
+      if (propName === 'children') {
+        continue;
+      }else if (/^on[A-Z]/.test(propName)) {
+        let eventName = propName.slice(2).toLowerCase();
+        $(document).delegate(`[data-reactid="${this._reactid}"]`, `${eventName}.${this._reactid}`, newProps[propName])
+      } else if(propName === 'style'){
+        let styleObj = newProps[propName];
+        // eslint-disable-next-line no-loop-func
+        // eslint-disable-next-line array-callback-return
+        Object.entries(styleObj).map(([attr, value]) => {
+          $(`[data-reactid="${this._reactid}"]`).css(attr, value)
+        })
+      } else {
+        $(`[data-reactid="${this._reactid}"]`).prop(propName, newProps[propName])
+      }
+    }
+  }
   getMarkUp(reactid) {
     this._reactid = reactid;
     let {type, props} = this._currentElement;
     let tagStart = `<${type} data-reactid="${this._reactid}"`;
     let childString = ''
     let tagEnd = `</${type}>`;
+    this._renderedChildrenUnit = []
     for (const propName in props) {
       if (/^on[A-Z]/.test(propName)) {
         // 绑定事件
@@ -61,6 +146,8 @@ class NativeUnit extends Unit {
         children.forEach((child, index) => {
           // 可能是字符串，也可能是虚拟DOM
           let childUnit = createUnit(child);
+          // 将单元添加到数组中保存方便做DOM-DIff处理
+          this._renderedChildrenUnit.push(child);
           let childMarkUp = childUnit.getMarkUp(`${this._reactid}.${index}`);
           childString += childMarkUp;
         })
